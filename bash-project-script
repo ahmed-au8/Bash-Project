@@ -1,1 +1,109 @@
 #!/bin/bash
+
+# Function to display help information
+function display_help {
+    echo "File Permissions Manager"
+    echo
+    echo "Usage: bash-project-script.sh -o <user> -p <permissions> -f <file>"
+    echo
+    echo "Options:"
+    echo " -o <user>: Change the owner of the specified file to the given user."
+    echo " -p <permissions>: Change file permissions using an octal format (e.g., 755)."
+    echo " -f <file>: Specify the file to modify."
+    echo " -h: Display this help message."
+    echo
+    echo "Example usage:"
+    echo "  ./bash-project-script.sh -f file.txt -o username"
+    echo "  ./bash-project-script.sh -f file.txt -p 755"
+    echo "  ./bash-project-script.sh -f file.txt -o username -p 755"
+    echo
+}
+
+# Check if no arguments were passed or if -h was passed
+if [[ $# -eq 0 || "$1" == "-h" ]]; then
+    display_help
+    exit 0
+fi
+
+# Initialize variables
+file_name=""
+new_owner=""
+new_permission=""
+
+# Parsing command-line arguments
+while getopts ":f:o:p:h" opt; do
+    case $opt in
+        f) # Option to specify file name
+            file_name=$OPTARG
+            ;;
+        o) # Option to specify new owner
+            new_owner=$OPTARG
+            ;;
+        p) # Option to specify new permissions
+            new_permission=$OPTARG
+            ;;
+        h) # Help option
+            display_help
+            exit 0
+            ;;
+        \?) # Invalid option
+            echo "Error: Invalid option -$OPTARG"
+            display_help
+            exit 1
+            ;;
+        :) # Missing argument
+            echo "Error: Option -$OPTARG requires an argument."
+            display_help
+            exit 1
+            ;;
+    esac
+done
+
+# Check if the file was provided
+if [[ -z "$file_name" ]]; then
+    echo "Error: No file specified. Use -f to specify a file."
+    display_help
+    exit 1
+fi
+
+# Check if the specified file exists
+if [[ ! -e "$file_name" ]]; then
+    echo "Error: The file '$file_name' does not exist."
+    exit 1
+fi
+
+# Function to change file ownership if -o option is used
+if [[ -n "$new_owner" ]]; then
+    sudo chown "$new_owner" "$file_name"
+    if [[ $? -eq 0 ]]; then
+        echo "Ownership of '$file_name' successfully changed to '$new_owner'."
+    else
+        echo "Error: Failed to change ownership of '$file_name'."
+        exit 1
+    fi
+fi
+
+# Function to change file permissions if -p option is used
+if [[ -n "$new_permission" ]]; then
+    # Validate permission format (must be 3-digit octal)
+    if [[ ! "$new_permission" =~ ^[0-7]{3}$ ]]; then
+        echo "Error: Invalid permission format. Use a 3-digit octal number (e.g., 755)."
+        exit 1
+    fi
+
+    chmod "$new_permission" "$file_name"
+    if [[ $? -eq 0 ]]; then
+        echo "Permissions of '$file_name' successfully changed to '$new_permission'."
+    else
+        echo "Error: Failed to change permissions of '$file_name'."
+        exit 1
+    fi
+fi
+
+# If no action is specified (neither ownership nor permissions), show error
+if [[ -z "$new_owner" && -z "$new_permission" ]]; then
+    echo "Error: No action specified. Use -o for ownership or -p for permissions."
+    display_help
+    exit 1
+fi
+
